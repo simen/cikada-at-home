@@ -1,0 +1,48 @@
+{
+  "name": "@cikada/provider",
+  "version": "0.1.0",
+  "description": "Local provider for running Cikada agents on your machine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "cikada-provider": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && tsc -p test/tsconfig.json",
+    "build:src": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "mock-server": "node dist-test/mock-server/index.js",
+    "mock-oauth": "node dist-test/mock-server/mock-oauth-server.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "cikada",
+    "provider",
+    "local",
+    "docker",
+    "agents"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "better-sqlite3": "^11.7.0",
+    "open": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
