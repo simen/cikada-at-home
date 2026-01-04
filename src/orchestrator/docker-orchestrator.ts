@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ContainerInfo, ContainerState, McpServerConfig } from '../types.js';
@@ -20,7 +20,6 @@ export class DockerOrchestrator {
   private config: DockerOrchestratorConfig;
   private stateStore: StateStore;
   private containers: Map<string, ContainerInfo> = new Map();
-  private processes: Map<string, ChildProcess> = new Map();
 
   constructor(config: DockerOrchestratorConfig) {
     this.config = config;
@@ -78,6 +77,7 @@ export class DockerOrchestrator {
     const containerId = `cikada-${threadId.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}`;
     const args = [
       'run',
+      '-d', // Detached mode - returns after container starts
       '--rm',
       '--name', containerId,
       '-v', `${workspaceDir}:/workspace`,
@@ -86,11 +86,24 @@ export class DockerOrchestrator {
       options.image,
     ];
 
-    const proc = spawn('docker', args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Start container in detached mode
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('docker', args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
 
-    this.processes.set(threadId, proc);
+      let stderr = '';
+      proc.stderr?.on('data', (data) => (stderr += data));
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`docker run failed: ${stderr}`));
+        }
+      });
+      proc.on('error', reject);
+    });
 
     // Wait for container to be healthy
     const endpoint = await this.waitForHealthy(containerId);
