@@ -8,6 +8,8 @@ const { values } = parseArgs({
     help: { type: 'boolean', short: 'h' },
     version: { type: 'boolean', short: 'v' },
     workspace: { type: 'string', short: 'w' },
+    'cloud-url': { type: 'string' },
+    'auth-url': { type: 'string' },
   },
   allowPositionals: false,
 });
@@ -22,6 +24,12 @@ Options:
   -h, --help       Show this help message
   -v, --version    Show version
   -w, --workspace  Workspace directory (default: ~/.cikada/workspaces)
+  --cloud-url      WebSocket URL for cloud (default: wss://api.cikada.dev/provider/ws)
+  --auth-url       OAuth URL (default: https://api.cikada.dev/oauth)
+
+Environment Variables:
+  CIKADA_CLOUD_URL  Override cloud WebSocket URL
+  CIKADA_AUTH_URL   Override OAuth URL
 
 On first run, opens browser for authentication.
 `);
@@ -38,6 +46,8 @@ async function main() {
 
   const provider = new Provider({
     workspacesDir: values.workspace,
+    cloudUrl: values['cloud-url'] ?? process.env.CIKADA_CLOUD_URL,
+    authUrl: values['auth-url'] ?? process.env.CIKADA_AUTH_URL,
   });
 
   // Handle graceful shutdown

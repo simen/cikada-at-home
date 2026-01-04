@@ -143,6 +143,7 @@ export interface DeviceCodeResponse {
 
 export interface ProviderConfig {
   cloudUrl?: string; // Default: wss://api.cikada.dev/provider/ws
+  authUrl?: string; // Default: https://api.cikada.dev/oauth
   workspacesDir?: string; // Default: ~/.cikada/workspaces
   credentialsPath?: string; // Default: ~/.cikada/credentials.json
   statePath?: string; // Default: ~/.cikada/state.db

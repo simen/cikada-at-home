@@ -1,10 +1,16 @@
 import open from 'open';
 import type { Credentials, DeviceCodeResponse } from '../types.js';
 
-const AUTH_BASE_URL = 'https://api.cikada.dev/oauth';
+const DEFAULT_AUTH_URL = 'https://api.cikada.dev/oauth';
 const POLL_INTERVAL_MS = 5000;
 
 export class DeviceAuthFlow {
+  private authBaseUrl: string;
+
+  constructor(authBaseUrl?: string) {
+    this.authBaseUrl = authBaseUrl ?? DEFAULT_AUTH_URL;
+  }
+
   async authenticate(): Promise<Credentials> {
     // 1. Request device code
     const deviceCode = await this.requestDeviceCode();
@@ -28,7 +34,7 @@ export class DeviceAuthFlow {
   }
 
   async refreshToken(refreshToken: string): Promise<Credentials> {
-    const response = await fetch(`${AUTH_BASE_URL}/token`, {
+    const response = await fetch(`${this.authBaseUrl}/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,7 +61,7 @@ export class DeviceAuthFlow {
   }
 
   private async requestDeviceCode(): Promise<DeviceCodeResponse> {
-    const response = await fetch(`${AUTH_BASE_URL}/device/code`, {
+    const response = await fetch(`${this.authBaseUrl}/device/code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -93,7 +99,7 @@ export class DeviceAuthFlow {
       await new Promise((r) => setTimeout(r, interval));
 
       try {
-        const response = await fetch(`${AUTH_BASE_URL}/token`, {
+        const response = await fetch(`${this.authBaseUrl}/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

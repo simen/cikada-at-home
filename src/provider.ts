@@ -8,6 +8,7 @@ import { DeviceAuthFlow } from './auth/device-auth-flow.js';
 import type { ProviderConfig, Credentials } from './types.js';
 
 const DEFAULT_CLOUD_URL = 'wss://api.cikada.dev/provider/ws';
+const DEFAULT_AUTH_URL = 'https://api.cikada.dev/oauth';
 const CIKADA_DIR = join(homedir(), '.cikada');
 
 export class Provider {
@@ -21,13 +22,14 @@ export class Provider {
   constructor(config: ProviderConfig = {}) {
     this.config = {
       cloudUrl: config.cloudUrl ?? DEFAULT_CLOUD_URL,
+      authUrl: config.authUrl ?? DEFAULT_AUTH_URL,
       workspacesDir: config.workspacesDir ?? join(CIKADA_DIR, 'workspaces'),
       credentialsPath: config.credentialsPath ?? join(CIKADA_DIR, 'credentials.json'),
       statePath: config.statePath ?? join(CIKADA_DIR, 'state.db'),
     };
 
     this.credentialStore = new CredentialStore(this.config.credentialsPath);
-    this.deviceAuth = new DeviceAuthFlow();
+    this.deviceAuth = new DeviceAuthFlow(this.config.authUrl);
   }
 
   async start(): Promise<void> {

@@ -36,33 +36,32 @@ describe('WebSocketClient', () => {
   });
 
   it('should receive sendMessage commands', async () => {
-    let clientRef: WebSocketClient | null = null;
+    const client = new WebSocketClient({
+      url: `ws://localhost:${port}`,
+      accessToken: 'test-token',
+      onMessage: () => {},
+    });
 
     const messageReceived = new Promise<{ threadId: string; content: string }>((resolve) => {
-      const client = new WebSocketClient({
-        url: `ws://localhost:${port}`,
-        accessToken: 'test-token',
-        onMessage: (msg) => {
-          if (msg.type === 'sendMessage') {
-            resolve({ threadId: msg.threadId, content: msg.content });
-          }
-        },
-      });
-      clientRef = client;
-
-      client.connect().then(() => {
-        // Wait for handshake then send test message
-        setTimeout(() => {
-          mockServer.sendMessage('test:channel:agent', 'Hello from test!');
-        }, 100);
-      });
+      client['config'].onMessage = (msg) => {
+        if (msg.type === 'sendMessage') {
+          resolve({ threadId: msg.threadId, content: msg.content });
+        }
+      };
     });
+
+    await client.connect();
+
+    // Wait for handshake then send test message
+    setTimeout(() => {
+      mockServer.sendMessage('test:channel:agent', 'Hello from test!');
+    }, 100);
 
     const { threadId, content } = await messageReceived;
     expect(threadId).toBe('test:channel:agent');
     expect(content).toBe('Hello from test!');
 
-    await clientRef?.disconnect();
+    await client.disconnect();
   });
 
   it('should handle ping/pong automatically', async () => {

@@ -1,0 +1,115 @@
+import open from 'open';
+const DEFAULT_AUTH_URL = 'https://api.cikada.dev/oauth';
+const POLL_INTERVAL_MS = 5000;
+export class DeviceAuthFlow {
+    authBaseUrl;
+    constructor(authBaseUrl) {
+        this.authBaseUrl = authBaseUrl ?? DEFAULT_AUTH_URL;
+    }
+    async authenticate() {
+        // 1. Request device code
+        const deviceCode = await this.requestDeviceCode();
+        console.log('\n========================================');
+        console.log('To authenticate, visit:');
+        console.log(`  ${deviceCode.verificationUri}`);
+        console.log('\nAnd enter the code:');
+        console.log(`  ${deviceCode.userCode}`);
+        console.log('========================================\n');
+        // 2. Open browser automatically
+        try {
+            await open(deviceCode.verificationUri);
+        }
+        catch {
+            // Browser open failed, user can manually navigate
+        }
+        // 3. Poll for token
+        return this.pollForToken(deviceCode);
+    }
+    async refreshToken(refreshToken) {
+        const response = await fetch(`${this.authBaseUrl}/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+            }),
+        });
+        if (!response.ok) {
+            throw new Error(`Token refresh failed: ${response.status}`);
+        }
+        const data = (await response.json());
+        return {
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            expiresAt: Date.now() + data.expires_in * 1000,
+        };
+    }
+    async requestDeviceCode() {
+        const response = await fetch(`${this.authBaseUrl}/device/code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: 'cikada-provider',
+                scope: 'provider',
+            }),
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to request device code: ${response.status}`);
+        }
+        const data = (await response.json());
+        return {
+            deviceCode: data.device_code,
+            userCode: data.user_code,
+            verificationUri: data.verification_uri,
+            expiresIn: data.expires_in,
+            interval: data.interval || POLL_INTERVAL_MS / 1000,
+        };
+    }
+    async pollForToken(deviceCode) {
+        const expiresAt = Date.now() + deviceCode.expiresIn * 1000;
+        const interval = Math.max(deviceCode.interval * 1000, POLL_INTERVAL_MS);
+        while (Date.now() < expiresAt) {
+            await new Promise((r) => setTimeout(r, interval));
+            try {
+                const response = await fetch(`${this.authBaseUrl}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+                        device_code: deviceCode.deviceCode,
+                        client_id: 'cikada-provider',
+                    }),
+                });
+                if (response.ok) {
+                    const data = (await response.json());
+                    return {
+                        accessToken: data.access_token,
+                        refreshToken: data.refresh_token,
+                        expiresAt: Date.now() + data.expires_in * 1000,
+                    };
+                }
+                const error = (await response.json());
+                if (error.error === 'authorization_pending') {
+                    // User hasn't approved yet, keep polling
+                    process.stdout.write('.');
+                    continue;
+                }
+                if (error.error === 'slow_down') {
+                    // Slow down polling
+                    await new Promise((r) => setTimeout(r, 5000));
+                    continue;
+                }
+                throw new Error(`Token request failed: ${error.error}`);
+            }
+            catch (error) {
+                if (error instanceof Error && error.message.includes('Token request failed')) {
+                    throw error;
+                }
+                // Network error, retry
+                continue;
+            }
+        }
+        throw new Error('Device code expired. Please try again.');
+    }
+}
+//# sourceMappingURL=device-auth-flow.js.map
